@@ -1,0 +1,3 @@
+[workspace]
+members = ["feather"]
+resolver = "2"
