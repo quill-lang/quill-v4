@@ -1,5 +1,5 @@
 [package]
-name = "feather"
+name = "files"
 version = "0.0.0"
 edition = "2021"
 
@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 diagnostic = { version = "0.0.0", path = "../diagnostic" }
-fexpr = { version = "0.0.0", path = "../fexpr" }
-files = { version = "0.0.0", path = "../files" }
+salsa = { git = "https://github.com/salsa-rs/salsa", package = "salsa-2022" }
+serde = { version = "1.0", features = ["derive"] }
 tracing = "0.1.37"
-tracing-subscriber = "0.3.17"
