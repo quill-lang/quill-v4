@@ -244,6 +244,10 @@ dependencies = [
 [[package]]
 name = "fexpr"
 version = "0.0.0"
+dependencies = [
+ "tree-sitter",
+ "tree-sitter-feather",
+]
 
 [[package]]
 name = "files"
@@ -914,6 +918,24 @@ dependencies = [
  "thread_local",
  "tracing-core",
  "tracing-log",
+]
+
+[[package]]
+name = "tree-sitter"
+version = "0.20.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e747b1f9b7b931ed39a548c1fae149101497de3c1fc8d9e18c62c1a66c683d3d"
+dependencies = [
+ "cc",
+ "regex",
+]
+
+[[package]]
+name = "tree-sitter-feather"
+version = "0.0.1"
+dependencies = [
+ "cc",
+ "tree-sitter",
 ]
 
 [[package]]

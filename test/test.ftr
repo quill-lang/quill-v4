@@ -1,1 +1,13 @@
-feather test code
+module test::test
+
+// def hello: Bool =
+// intro Bool/True {}
+
+// def foo: Bool =
+// match x return Bool { True -> False, False -> True, }
+
+// def bar: Bool =
+// fix (x : 0 Bool) return Bool with x
+
+def baz: Bool =
+loan x as y with z; let t = 1; take x { t -> false, }; x

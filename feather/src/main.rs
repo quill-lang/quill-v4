@@ -28,6 +28,7 @@ fn main() {
 
     if let Some(result) = files::source(&db, source).print_diagnostics() {
         println!("{}", result);
+        fexpr::test(&result);
     }
 
     // TODO: <https://github.com/salsa-rs/salsa/blob/master/examples-2022/lazy-input/src/main.rs>
