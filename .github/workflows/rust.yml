@@ -20,7 +20,7 @@ jobs:
       
     - name: Download npm dependencies
       working-directory: fgrammar
-      run: npm install
+      run: npm ci
       
     - name: Build tree-sitter grammar
       working-directory: fgrammar
