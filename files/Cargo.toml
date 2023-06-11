@@ -8,5 +8,4 @@ edition = "2021"
 [dependencies]
 diagnostic = { version = "0.0.0", path = "../diagnostic" }
 salsa = { git = "https://github.com/salsa-rs/salsa", package = "salsa-2022" }
-serde = { version = "1.0", features = ["derive"] }
 tracing = "0.1.37"
