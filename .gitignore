@@ -12,3 +12,4 @@ target/
 # Tree-sitter data
 fgrammar/node_modules/
 fgrammar/src
+fgrammar/binding.gyp
