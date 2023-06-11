@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+database = { version = "0.0.0", path = "../database" }
 diagnostic = { version = "0.0.0", path = "../diagnostic" }
 fexpr = { version = "0.0.0", path = "../fexpr" }
 files = { version = "0.0.0", path = "../files" }

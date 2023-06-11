@@ -171,7 +171,7 @@ pub struct Source {
 /// Used to deduce the file extension of a [`Source`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SourceType {
-    /// A feather source file, written as an S-expression encoded as UTF-8.
+    /// A feather source file, encoded as UTF-8.
     Feather,
     /// A quill source file, encoded as UTF-8.
     Quill,

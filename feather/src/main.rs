@@ -1,7 +1,7 @@
-use diagnostic::{
-    miette::{diagnostic, MietteDiagnostic},
-    Dr,
-};
+use std::path::PathBuf;
+
+use database::FeatherDatabase;
+use files::{Path, Source, SourceType, Str};
 
 fn main() {
     let log_level = tracing::Level::TRACE;
@@ -16,7 +16,20 @@ fn main() {
         .expect("could not set default tracing subscriber");
     tracing::info!("initialised logging with verbosity level {}", log_level);
 
-    let dr: Dr<(), MietteDiagnostic, MietteDiagnostic> =
-        Dr::new(()).with(diagnostic!("test diagnostic"));
-    dr.print_diagnostics();
+    let (db, _rx) = FeatherDatabase::new(PathBuf::new());
+    let path = Path::new(
+        &db,
+        vec![
+            Str::new(&db, "test".to_string()),
+            Str::new(&db, "test".to_string()),
+        ],
+    );
+    let source = Source::new(&db, path, SourceType::Feather);
+
+    if let Some(result) = files::source(&db, source).print_diagnostics() {
+        println!("{}", result);
+    }
+
+    // TODO: <https://github.com/salsa-rs/salsa/blob/master/examples-2022/lazy-input/src/main.rs>
+    // This helps us set up the main loop for language servers.
 }
