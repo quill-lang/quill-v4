@@ -9,5 +9,8 @@ module test::test
 // def bar: Bool =
 // fix (x : 0 Bool) return Bool with x
 
-def baz: Bool =
-loan x as y with z; let t = 1; take x { t -> false, }; x
+// def baz: Bool =
+// loan x as y with z; let t = 1; take x { t -> false, }; x
+
+def bar: for (p: Sort 0) -> Sort 0 =
+fun (p: Sort 0) -> for (q: Sort 0) -> q

@@ -10,20 +10,20 @@ module.exports = grammar({
 
     rules: {
       source_file: $ => seq(
-        field("module", $.module),
-        field("definition", repeat($.definition)),
+        field('module', $.module),
+        field('definition', repeat($.definition)),
       ),
 
       module: $ => seq('module', field('path', $.path)),
 
       definition: $ => seq(
         'def',
-        $.identifier,
+        field('name', $.identifier),
         ':',
-        optional('0'),
-        $._expr,
+        field('usage', optional('0')),
+        field('ty', $._expr),
         '=',
-        $._expr,
+        field('body', $._expr),
       ),
 
       path: $ => seq(
@@ -60,7 +60,7 @@ module.exports = grammar({
 
       app: $ => prec.left(10, seq($._expr, $._expr)),
 
-      _binder: $ => choice(
+      _binder_structure: $ => choice(
         $.explicit,
         $.implicit,
         $.weak,
@@ -68,43 +68,43 @@ module.exports = grammar({
 
       explicit: $ => seq(
         '(',
-        $.identifier,
+        field('name', $.identifier),
         ':',
-        optional('0'),
-        $._expr,
+        field('usage', optional('0')),
+        field('ty', $._expr),
         ')',
       ),
 
       implicit: $ => seq(
         '{',
-        $.identifier,
+        field('name', $.identifier),
         ':',
-        optional('0'),
-        $._expr,
+        field('usage', optional('0')),
+        field('ty', $._expr),
         '}',
       ),
 
       weak: $ => seq(
         '{{',
-        $.identifier,
+        field('name', $.identifier),
         ':',
-        optional('0'),
-        $._expr,
+        field('usage', optional('0')),
+        field('ty', $._expr),
         '}}',
       ),
 
       fun: $ => seq(
         'fun',
-        $._binder,
-        choice('->', '=>'),
-        $._expr,
+        field('binder', $._binder_structure),
+        field('arrow', choice('->', '=>')),
+        field('body', $._expr),
       ),
 
       for: $ => seq(
         'for',
-        $._binder,
-        choice('->', '=>'),
-        $._expr,
+        field('binder', $._binder_structure),
+        field('arrow', choice('->', '=>')),
+        field('body', $._expr),
       ),
 
       let: $ => seq(
@@ -116,7 +116,7 @@ module.exports = grammar({
         $._expr,
       ),
 
-      sort: $ => seq('Sort', $.universe),
+      sort: $ => seq('Sort', field('universe', $.universe)),
 
       inst: $ => seq('inst', $.path),
 
@@ -157,7 +157,7 @@ module.exports = grammar({
 
       fix: $ => seq(
         'fix',
-        field('binder', $._binder),
+        field('binder', $._binder_structure),
         'return',
         field('return', $._expr),
         'with',

@@ -96,6 +96,11 @@ impl<T, E, N> Dr<T, E, N> {
         self.value.is_err()
     }
 
+    /// Retrieves the value inside this diagnostic result if in the `ok` state.
+    pub fn value(&self) -> Option<&T> {
+        self.value.as_ref().ok()
+    }
+
     /// Applies the given operation to the contained value, if it exists.
     /// If this diagnostic result is in the `err` state, no action is performed.
     pub fn map<U>(self, op: impl FnOnce(T) -> U) -> Dr<U, E, N> {
@@ -111,6 +116,15 @@ impl<T, E, N> Dr<T, E, N> {
         Dr {
             value: self.value.map_err(op),
             non_fatal: self.non_fatal,
+        }
+    }
+
+    /// Applies the given operation to the contained error, if it exists.
+    /// If this diagnostic result is in the `ok` state, no action is performed.
+    pub fn map_errs<O>(self, op: impl FnMut(N) -> O) -> Dr<T, E, O> {
+        Dr {
+            value: self.value,
+            non_fatal: self.non_fatal.into_iter().map(op).collect(),
         }
     }
 
@@ -155,6 +169,18 @@ impl<T, E, N> Dr<T, E, N> {
             },
         }
     }
+
+    /// Combines a list of diagnostic results into a single result by binding them all together.
+    pub fn sequence(results: impl IntoIterator<Item = Dr<T, E, N>>) -> Dr<Vec<T>, E, N> {
+        results.into_iter().fold(Dr::new(Vec::new()), |acc, i| {
+            acc.bind(|mut list| {
+                i.bind(|i| {
+                    list.push(i);
+                    Dr::new(list)
+                })
+            })
+        })
+    }
 }
 
 impl<T, E> Dr<T, E, E> {
@@ -168,6 +194,38 @@ impl<T, E> Dr<T, E, E> {
             value: Err(errors.pop().unwrap()),
             non_fatal: errors,
         }
+    }
+
+    /// Converts a failed diagnostic into a successful diagnostic by wrapping
+    /// the contained value in an `Option`.
+    pub fn unfail(mut self) -> Dr<Option<T>, E, E> {
+        let value = match self.value {
+            Ok(value) => Some(value),
+            Err(err) => {
+                self.non_fatal.push(err);
+                None
+            }
+        };
+        Dr {
+            value: Ok(value),
+            non_fatal: self.non_fatal,
+        }
+    }
+
+    /// Combines a list of diagnostic results into a single result by binding them all together.
+    /// Any failed diagnostics will be excluded from the output, but their error messages will remain.
+    /// Therefore, this function will never fail - it might just produce an empty list as its output.
+    pub fn sequence_unfail(results: impl IntoIterator<Item = Dr<T, E, E>>) -> Dr<Vec<T>, E, E> {
+        results.into_iter().fold(Dr::new(Vec::new()), |acc, i| {
+            acc.bind(|mut list| {
+                i.unfail().bind(|i| {
+                    if let Some(i) = i {
+                        list.push(i);
+                    }
+                    Dr::new(list)
+                })
+            })
+        })
     }
 }
 

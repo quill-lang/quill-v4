@@ -6,6 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+feather-parser = { version = "0.0.0", path = "../feather_parser" }
 files = { version = "0.0.0", path = "../files" }
+kernel = { version = "0.0.0", path = "../kernel" }
 notify-debouncer-mini = "0.3.0"
 salsa = { git = "https://github.com/salsa-rs/salsa", package = "salsa-2022" }

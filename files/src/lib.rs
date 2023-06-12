@@ -3,6 +3,7 @@ use std::{fmt::Debug, path::PathBuf, sync::Arc};
 use diagnostic::{miette, Dr};
 use miette::Diagnostic;
 use thiserror::Error;
+use upcast::UpcastFrom;
 
 #[salsa::jar(db = Db)]
 pub struct Jar(Str, Path, InputFile, Source, source);
@@ -11,6 +12,15 @@ pub trait Db: std::fmt::Debug + salsa::DbWithJar<Jar> {
     /// Loads source code from a file.
     /// This is performed lazily when needed.
     fn input_file(&self, path: std::path::PathBuf) -> std::io::Result<InputFile>;
+}
+
+impl<'a, T: Db + 'a> UpcastFrom<T> for dyn Db + 'a {
+    fn up_from(value: &T) -> &(dyn Db + 'a) {
+        value
+    }
+    fn up_from_mut(value: &mut T) -> &mut (dyn Db + 'a) {
+        value
+    }
 }
 
 /// A span of code in a given source file.
@@ -189,6 +199,65 @@ impl SourceType {
     }
 }
 
+/// All of the database's data for a given source.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct SourceData {
+    name: String,
+    contents: String,
+}
+
+impl SourceData {
+    pub fn name(&self) -> &str {
+        self.name.as_ref()
+    }
+
+    pub fn contents(&self) -> &str {
+        self.contents.as_ref()
+    }
+}
+
+impl miette::SourceCode for SourceData {
+    fn read_span<'a>(
+        &'a self,
+        span: &miette::SourceSpan,
+        context_lines_before: usize,
+        context_lines_after: usize,
+    ) -> Result<Box<dyn miette::SpanContents<'a> + 'a>, miette::MietteError> {
+        // miette::NamedSource::
+        self.contents
+            .read_span(span, context_lines_before, context_lines_after)
+            .map(|contents| {
+                Box::new(miette::MietteSpanContents::new_named(
+                    self.name.clone(),
+                    contents.data(),
+                    *contents.span(),
+                    contents.line(),
+                    contents.column(),
+                    contents.line_count(),
+                )) as Box<dyn miette::SpanContents<'a> + 'a>
+            })
+    }
+}
+
+impl Source {
+    /// Extracts all of the database's data for this source, and
+    /// packages it into a single struct.
+    pub fn data(self, db: &dyn Db) -> SourceData {
+        SourceData {
+            name: self
+                .path(db)
+                .to_path_buf(db)
+                .with_extension(self.ty(db).extension())
+                .to_string_lossy()
+                .to_string(),
+            contents: source(db, self)
+                .value()
+                .map(|value| (**value).clone())
+                .unwrap_or("<could not read source file>".to_owned()),
+        }
+    }
+}
+
 /// A span of code in a particular source file.
 /// See also [`Span`].
 /// Not to be confused with [`miette::SourceSpan`].
@@ -226,6 +295,15 @@ impl<T> WithProvenance<T> {
             provenance,
             contents,
         }
+    }
+}
+
+impl<T> Debug for WithProvenance<T>
+where
+    T: Debug,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.contents.fmt(f)
     }
 }
 
