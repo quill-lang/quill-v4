@@ -60,7 +60,7 @@ impl files::Db for FeatherDatabase {
                 let contents = std::fs::read_to_string(&path).map_err(|e| {
                     std::io::Error::new(e.kind(), format!("failed to read {}", path.display()))
                 })?;
-                *entry.insert(InputFile::new(self, path, contents))
+                *entry.insert(InputFile::new(self, path, Arc::new(contents)))
             }
         })
     }

@@ -7,9 +7,9 @@ An expressive, performant, modern functional programming language.
 
 ## Development
 
-To generate the tree-sitter grammars, execute `npm run generate` inside `fgrammar`.
+To generate the tree-sitter grammars, execute `npm run generate` inside `feather_grammar`.
 
 It can be useful during development to run the following command from the root directory.
 ```sh
-(cd fgrammar; npm run generate); cargo run
+(cd feather_grammar; npm run generate); cargo run
 ```

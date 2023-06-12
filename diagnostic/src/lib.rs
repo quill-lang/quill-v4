@@ -6,7 +6,7 @@ use std::{
     fmt::{Debug, Display},
 };
 
-use miette::{Diagnostic, MietteDiagnostic};
+use miette::{Diagnostic, Report};
 
 /// An uninhabited type.
 /// It is not possible to construct `x: Void` in safe Rust.
@@ -40,13 +40,15 @@ impl Diagnostic for Void {}
 /// In the `ok` state, there is a value of type `T`, and a list of non-fatal diagnostics of type `N`.
 /// In the `err` state, there is a fatal error of type `E`, and a list of non-fatal diagnostics of type `N`.
 ///
+/// The fatal error type should either be [`Report`] or a [`Diagnostic`].
+///
 /// The default non-fatal error type is [`Void`], which can never be diagnostics.
 /// This means that, by default, we do not track or allocate for non-fatal diagnostics.
 ///
 /// We implement various monadic operations to compose diagnostic results.
 /// When we hit the first fatal error, we will no longer track any subsequent diagnostics.
 #[derive(Clone, PartialEq, Eq, Hash)]
-pub struct Dr<T, E = MietteDiagnostic, N = Void> {
+pub struct Dr<T, E = Report, N = Void> {
     value: Result<T, E>,
     non_fatal: Vec<N>,
 }
@@ -112,6 +114,21 @@ impl<T, E, N> Dr<T, E, N> {
         }
     }
 
+    /// Converts the error types into generic [`Report`]s.
+    pub fn to_reports(self) -> Dr<T, Report, Report>
+    where
+        E: Diagnostic + Send + Sync + 'static,
+        N: Diagnostic + Send + Sync + 'static,
+    {
+        Dr {
+            value: match self.value {
+                Ok(value) => Ok(value),
+                Err(err) => Err(Report::new(err)),
+            },
+            non_fatal: self.non_fatal.into_iter().map(Report::new).collect(),
+        }
+    }
+
     /// Produces a new diagnostic result by adding the given non-fatal diagnostic.
     /// If this diagnostic result is in the `err` state, no action is performed.
     pub fn with(mut self, diag: N) -> Self {
@@ -138,22 +155,34 @@ impl<T, E, N> Dr<T, E, N> {
             },
         }
     }
+}
 
+impl<T, E> Dr<T, E, E> {
+    /// Creates a new diagnostic report with the given vector of errors.
+    /// This must be nonempty.
+    /// The last entry in this list is used as the fatal error, all others are marked as non-fatal.
+    /// This choice makes the rendered order of the errors correct.
+    pub fn new_err_many(mut errors: Vec<E>) -> Self {
+        assert!(!errors.is_empty());
+        Self {
+            value: Err(errors.pop().unwrap()),
+            non_fatal: errors,
+        }
+    }
+}
+
+impl<T> Dr<T, Report, Report> {
     /// Prints all of the diagnostic messages contained in this diagnostic result.
     /// Then, return the contained value, if present.
-    pub fn print_diagnostics(self) -> Option<T>
-    where
-        E: Diagnostic + Send + Sync + 'static,
-        N: Diagnostic + Send + Sync + 'static,
-    {
+    pub fn print_reports(self) -> Option<T> {
         for diag in self.non_fatal {
-            println!("{:?}", miette::Report::new(diag));
+            println!("{:?}", diag);
         }
 
         match self.value {
             Ok(value) => Some(value),
             Err(err) => {
-                println!("{:?}", miette::Report::new(err));
+                println!("{:?}", err);
                 None
             }
         }

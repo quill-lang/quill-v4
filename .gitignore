@@ -10,6 +10,6 @@ target/
 *.pdb
 
 # Tree-sitter data
-fgrammar/node_modules/
-fgrammar/src
-fgrammar/binding.gyp
+feather_grammar/node_modules/
+feather_grammar/src
+feather_grammar/binding.gyp

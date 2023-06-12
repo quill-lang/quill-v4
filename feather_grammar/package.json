@@ -1,5 +1,5 @@
 {
-  "name": "fgrammar",
+  "name": "feather_grammar",
   "version": "1.0.0",
   "description": "",
   "main": "bindings/node",

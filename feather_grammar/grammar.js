@@ -9,9 +9,12 @@ module.exports = grammar({
     ],
 
     rules: {
-      source_file: $ => seq($.module, repeat($.definition)),
+      source_file: $ => seq(
+        field("module", $.module),
+        field("definition", repeat($.definition)),
+      ),
 
-      module: $ => seq('module', $.qualified_name),
+      module: $ => seq('module', field('path', $.path)),
 
       definition: $ => seq(
         'def',
@@ -23,9 +26,9 @@ module.exports = grammar({
         $._expr,
       ),
 
-      qualified_name: $ => seq(
-        repeat(seq($.identifier, '::')),
-        $.identifier
+      path: $ => seq(
+        repeat(seq(field('first', $.identifier), '::')),
+        field('last', $.identifier),
       ),
 
       identifier: $ => /[\pL\pN\pS]+/,
@@ -115,11 +118,11 @@ module.exports = grammar({
 
       sort: $ => seq('Sort', $.universe),
 
-      inst: $ => seq('inst', $.qualified_name),
+      inst: $ => seq('inst', $.path),
 
       intro: $ => seq(
         'intro',
-        field('name', $.qualified_name),
+        field('path', $.path),
         field('param', repeat($._expr_no_app)),
         '/',
         field('variant', $.identifier),

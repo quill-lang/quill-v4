@@ -26,9 +26,12 @@ fn main() {
     );
     let source = Source::new(&db, path, SourceType::Feather);
 
-    if let Some(result) = files::source(&db, source).print_diagnostics() {
-        println!("{}", result);
-        fexpr::test(&result);
+    if let Some(result) = files::source(&db, source)
+        .to_reports()
+        .bind(|result| feather_parser::test(&db, source, result).to_reports())
+        .print_reports()
+    {
+        println!("{:?}", result);
     }
 
     // TODO: <https://github.com/salsa-rs/salsa/blob/master/examples-2022/lazy-input/src/main.rs>

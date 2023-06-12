@@ -1,5 +1,8 @@
+use std::{fmt::Debug, path::PathBuf, sync::Arc};
+
 use diagnostic::{miette, Dr};
-use std::{fmt::Debug, path::PathBuf};
+use miette::Diagnostic;
+use thiserror::Error;
 
 #[salsa::jar(db = Db)]
 pub struct Jar(Str, Path, InputFile, Source, source);
@@ -195,23 +198,63 @@ pub struct SourceSpan {
     pub span: Span,
 }
 
+impl SourceSpan {
+    pub fn new(source: Source, span: Span) -> Self {
+        Self { source, span }
+    }
+}
+
+/// The origin of some data, if known.
+/// If no data is provided, we say that the provenance is "synthetic".
+pub type Provenance = Option<SourceSpan>;
+
+/// Attaches provenance data to a type.
+///
+/// Note that in certain cases, especially with expression types, we attach provenance information
+/// alongside the data in a second structure, rather than bundling it in each object as we do here.
+#[derive(Copy, Clone, PartialEq, Eq, Hash)]
+pub struct WithProvenance<T> {
+    /// The origin of the value.
+    pub provenance: Provenance,
+    /// The actual value.
+    pub contents: T,
+}
+
+impl<T> WithProvenance<T> {
+    pub fn new(provenance: Provenance, contents: T) -> Self {
+        Self {
+            provenance,
+            contents,
+        }
+    }
+}
+
 /// An input file.
 #[salsa::input]
 pub struct InputFile {
     pub path: PathBuf,
-    #[return_ref]
-    pub contents: String,
+    pub contents: Arc<String>,
 }
 
 #[tracing::instrument(level = "debug")]
 #[salsa::tracked]
-pub fn source(db: &dyn Db, source: Source) -> Dr<String> {
+pub fn source(db: &dyn Db, source: Source) -> Dr<Arc<String>, SourceError> {
     let path_buf = source
         .path(db)
         .to_path_buf(db)
         .with_extension(source.ty(db).extension());
     match db.input_file(path_buf) {
-        Ok(value) => Dr::new(value.contents(db).to_owned()),
-        Err(_) => todo!(),
+        Ok(value) => Dr::new(value.contents(db)),
+        Err(err) => Dr::new_err(SourceError {
+            src: source.path(db).to_path_buf(db),
+            message: err.to_string(),
+        }),
     }
+}
+
+#[derive(Error, Diagnostic, Debug, Clone, Eq, PartialEq)]
+#[error("error reading {src}: {message}")]
+pub struct SourceError {
+    src: PathBuf,
+    message: String,
 }
