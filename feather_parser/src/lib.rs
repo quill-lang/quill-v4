@@ -26,13 +26,13 @@ impl<T> Db for T where T: kernel::Db + salsa::DbWithJar<Jar> + 'static {}
 #[salsa::tracked]
 pub fn parse_module(db: &dyn Db, source: Source) -> Dr<Module, ParseError, ParseError> {
     files::source(db.up(), source)
-        .map_err(|err| todo!())
-        .map_errs(|err| todo!())
+        .map_err(|_| todo!())
+        .map_errs(|_| todo!())
         .bind(|code| {
             let mut parser = tree_sitter::Parser::new();
             parser
                 .set_language(tree_sitter_feather::language())
-                .expect("Error loading feather grammar");
+                .expect("Error loading Feather grammar");
             let tree = parser.parse(&*code, None).unwrap();
 
             if tree.root_node().kind() != "source_file" {

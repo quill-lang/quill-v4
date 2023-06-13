@@ -1,16 +1,22 @@
 module test::test
 
-// def hello: Bool =
-// intro Bool/True {}
+def hello: Bool =
+    intro Bool/True {}
 
-// def foo: Bool =
-// match x return Bool { True -> False, False -> True, }
+def foo: Bool =
+    match x return Bool {
+        True -> False,
+        False -> True,
+    }
 
-// def bar: Bool =
-// fix (x : 0 Bool) return Bool with x
+def bar: Bool =
+    fix (x: 0 Bool) return Bool with x
 
-// def baz: Bool =
-// loan x as y with z; let t = 1; take x { t -> false, }; x
+def baz: Bool =
+    loan x as y with z;
+    let t = 1;
+    take x { t -> false, };
+    x
 
 def bar: for (p: Sort 0) -> Sort 0 =
-fun (p: Sort 0) -> for (q: Sort 0) -> q
+    fun (p: Sort 0) -> for (q: Sort 0) -> q

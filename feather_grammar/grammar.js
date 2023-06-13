@@ -5,7 +5,7 @@ module.exports = grammar({
 
     extras: $ => [
       /\s/,
-      $.comment,
+      $.line_comment,
     ],
 
     rules: {
@@ -35,7 +35,7 @@ module.exports = grammar({
 
       universe: $ => /[0-9]+/,
 
-      comment: $ => token(
+      line_comment: $ => token(
         seq('//', /[^\n]*/),
       ),
 
@@ -143,6 +143,10 @@ module.exports = grammar({
         field('arg', $._expr),
         'return',
         field('return', $._expr),
+        $.match_body,
+      ),
+
+      match_body: $ => seq(
         '{',
         field('variant', repeat($.match_variant)),
         '}',

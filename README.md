@@ -13,3 +13,7 @@ It can be useful during development to run the following command from the root d
 ```sh
 (cd feather_grammar; npm run generate); cargo run
 ```
+
+## Other dependencies
+
+The `feather_formatter` crate uses code from [Topiary](https://github.com/tweag/topiary), released under the MIT license, but does not list it as a Rust dependency.

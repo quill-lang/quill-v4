@@ -1,3 +1,3 @@
 [workspace]
-members = ["feather"]
+members = ["feather", "formatter"]
 resolver = "2"
