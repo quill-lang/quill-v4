@@ -1,9 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{language::Language, FormatterError, FormatterResult};
-use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize)]
 pub struct Configuration {
     pub language: Vec<Language>,
 }

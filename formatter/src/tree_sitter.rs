@@ -1,9 +1,6 @@
 use std::collections::HashSet;
 
-use serde::Serialize;
-use tree_sitter_facade::{
-    Node, Parser, Point, Query, QueryCapture, QueryCursor, QueryPredicate, Tree,
-};
+use tree_sitter_facade::{Node, Parser, Query, QueryCapture, QueryCursor, QueryPredicate, Tree};
 
 use crate::{
     atom_collection::{AtomCollection, QueryPredicates},
@@ -15,38 +12,14 @@ use crate::{
 #[derive(Clone, Copy, Debug)]
 pub enum Visualisation {
     GraphViz,
-    Json,
-}
-
-// 1-based text position, derived from tree_sitter::Point, for the sake of serialisation.
-#[derive(Serialize)]
-struct Position {
-    row: u32,
-    column: u32,
-}
-
-impl From<Point> for Position {
-    fn from(point: Point) -> Self {
-        Self {
-            row: point.row() + 1,
-            column: point.column() + 1,
-        }
-    }
 }
 
 // Simplified syntactic node struct, for the sake of serialisation.
-#[derive(Serialize)]
 pub struct SyntaxNode {
-    #[serde(skip_serializing)]
     pub id: usize,
 
     pub kind: String,
     pub is_named: bool,
-    is_extra: bool,
-    is_error: bool,
-    is_missing: bool,
-    start: Position,
-    end: Position,
 
     pub children: Vec<SyntaxNode>,
 }
@@ -61,11 +34,6 @@ impl From<Node<'_>> for SyntaxNode {
 
             kind: node.kind().into(),
             is_named: node.is_named(),
-            is_extra: node.is_extra(),
-            is_error: node.is_error(),
-            is_missing: node.is_missing(),
-            start: node.start_position().into(),
-            end: node.end_position().into(),
 
             children,
         }
@@ -125,7 +93,7 @@ pub fn apply_query(
     // The Flattening: collects all terminal nodes of the tree-sitter tree in a Vec
     let mut atoms = AtomCollection::collect_leafs(&root, source, specified_leaf_nodes)?;
 
-    log::debug!("List of atoms before formatting: {atoms:?}");
+    tracing::debug!("List of atoms before formatting: {atoms:?}");
 
     // If there are more than one capture per match, it generally means that we
     // want to use the last capture. For example
@@ -137,7 +105,7 @@ pub fn apply_query(
     // the end, but we don't know if we get a line_comment capture or not.
 
     for m in matches {
-        log::debug!("Processing match: {m:?}");
+        tracing::debug!("Processing match: {m:?}");
 
         let mut predicates = QueryPredicates::default();
 

@@ -12,9 +12,6 @@
 
 use std::io;
 
-use itertools::Itertools;
-use pretty_assertions::StrComparison;
-
 pub use crate::{
     configuration::Configuration,
     error::{FormatterError, IoError},
@@ -136,14 +133,14 @@ pub fn formatter(
     match operation {
         Operation::Format { skip_idempotence } => {
             // All the work related to tree-sitter and the query is done here
-            log::info!("Apply Tree-sitter query");
+            tracing::info!("Apply Tree-sitter query");
             let mut atoms = tree_sitter::apply_query(&content, query, grammars, false)?;
 
             // Various post-processing of whitespace
             atoms.post_process();
 
             // Pretty-print atoms
-            log::info!("Pretty-print output");
+            tracing::info!("Pretty-print output");
             let rendered = pretty::render(
                 &atoms[..],
                 // Default to "  " is the language has no indentation specified
@@ -164,7 +161,6 @@ pub fn formatter(
 
             match output_format {
                 Visualisation::GraphViz => graphviz::write(output, &root)?,
-                Visualisation::Json => serde_json::to_writer(output, &root)?,
             };
         }
     };
@@ -182,7 +178,14 @@ fn trim_whitespace(s: &str) -> String {
     // Trim whitespace from the end of each line,
     // then trim any leading/trailing new lines,
     // finally reinstate the new line at EOF.
-    format!("{}\n", s.lines().map(str::trim_end).join("\n").trim())
+    format!(
+        "{}\n",
+        s.lines()
+            .map(str::trim_end)
+            .collect::<Vec<_>>()
+            .join("\n")
+            .trim()
+    )
 }
 
 fn idempotence_check(
@@ -191,7 +194,7 @@ fn idempotence_check(
     language: &Language,
     grammars: &[tree_sitter_facade::Language],
 ) -> FormatterResult<()> {
-    log::info!("Checking for idempotence ...");
+    tracing::info!("Checking for idempotence ...");
 
     let mut input = content.as_bytes();
     let mut output = io::BufWriter::new(Vec::new());
@@ -210,8 +213,8 @@ fn idempotence_check(
     let res = if content == reformatted {
         Ok(())
     } else {
-        log::error!("Failed idempotence check");
-        log::error!("{}", StrComparison::new(content, &reformatted));
+        tracing::error!("Failed idempotence check");
+        tracing::error!("{}\n!=\n{}", content, reformatted);
         Err(FormatterError::Idempotence)
     };
 

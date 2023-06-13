@@ -42,6 +42,7 @@ module.exports = grammar({
       _expr: $ => choice($._expr_no_app, $.app, $.ref, $.in),
 
       _expr_no_app: $ => choice(
+        $.paren,
         $.local,
         $.fun,
         $.for,
@@ -55,6 +56,8 @@ module.exports = grammar({
         $.loan,
         $.take,
       ),
+
+      paren: $ => seq("(", field('inner', $._expr), ")"),
 
       local: $ => $.identifier,
 

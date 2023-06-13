@@ -2,12 +2,10 @@ use std::collections::HashSet;
 use std::io;
 use std::path::{Path, PathBuf};
 
-use serde::{Deserialize, Serialize};
-
 use crate::{Configuration, FormatterError, FormatterResult, IoError};
 
 /// The languages that we support with query files.
-#[derive(Clone, Debug, Eq, PartialEq, Deserialize, Serialize)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Language {
     pub name: String,
     pub extensions: HashSet<String>,

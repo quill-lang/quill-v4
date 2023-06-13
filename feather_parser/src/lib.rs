@@ -43,9 +43,10 @@ pub fn parse_module(db: &dyn Db, source: Source) -> Dr<Module, ParseError, Parse
                 ));
             }
 
-            let mut cursor = tree.root_node().walk();
+            tracing::trace!("{}", tree.root_node().to_sexp());
+
             let mut errors = Vec::new();
-            check_errors(db, source, &mut cursor, &mut errors);
+            check_errors(db, source, &mut tree.root_node().walk(), &mut errors);
             if !errors.is_empty() {
                 return Dr::new_err_many(errors);
             }
@@ -206,6 +207,13 @@ fn process_expr(
     locals: &[Str],
 ) -> ParseDr<Expression> {
     match node.kind() {
+        "paren" => process_expr(
+            db,
+            source,
+            code,
+            node.child_by_field_name("inner").unwrap(),
+            locals,
+        ),
         "local" => process_local(db, source, code, node, locals),
         "for" => process_for(db, source, code, node, locals),
         "fun" => process_fun(db, source, code, node, locals),
@@ -317,12 +325,7 @@ fn process_fun(
     process_binder(db, source, code, node, locals).map(|binder| Expression::lambda(db.up(), binder))
 }
 
-fn process_sort(
-    db: &dyn Db,
-    source: Source,
-    code: &Arc<String>,
-    node: Node,
-) -> Expression {
+fn process_sort(db: &dyn Db, source: Source, code: &Arc<String>, node: Node) -> Expression {
     Expression::sort(
         db.up(),
         process_universe(source, code, node.child_by_field_name("universe").unwrap()).contents,

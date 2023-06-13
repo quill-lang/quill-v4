@@ -100,7 +100,7 @@ impl AtomCollection {
         node: &Node,
         predicates: &QueryPredicates,
     ) -> FormatterResult<()> {
-        log::debug!("Resolving {name}");
+        tracing::debug!("Resolving {name}");
 
         let requires_delimiter = || {
             predicates.delimiter.as_deref().ok_or_else(|| {
@@ -121,16 +121,16 @@ impl AtomCollection {
             }
         }
         if is_multi_line && predicates.single_line_only {
-            log::debug!("Skipping because context is multi-line and #single_line_only! is set");
+            tracing::debug!("Skipping because context is multi-line and #single_line_only! is set");
             return Ok(());
         }
         if !is_multi_line && predicates.multi_line_only {
-            log::debug!("Skipping because context is single-line and #multi_line_only! is set");
+            tracing::debug!("Skipping because context is single-line and #multi_line_only! is set");
             return Ok(());
         }
         if let Some(parent_id) = self.parent_leaf_nodes.get(&node.id()) {
             if *parent_id != node.id() {
-                log::warn!("Skipping because the match occurred below a leaf node: {node:?}");
+                tracing::warn!("Skipping because the match occurred below a leaf node: {node:?}");
                 return Ok(());
             }
         }
@@ -293,14 +293,14 @@ impl AtomCollection {
                 // in its place.
                 let swapped_atom = mem::take(atom);
 
-                log::debug!("Applying prepend of {prepends:?} to {atom:?}.");
+                tracing::debug!("Applying prepend of {prepends:?} to {atom:?}.");
                 expanded.append(prepends);
                 expanded.push(swapped_atom);
 
-                log::debug!("Applying append of {appends:?} to {atom:?}.");
+                tracing::debug!("Applying append of {appends:?} to {atom:?}.");
                 expanded.append(appends);
             } else {
-                log::debug!("Not a leaf: {atom:?}");
+                tracing::debug!("Not a leaf: {atom:?}");
                 expanded.push(mem::take(atom));
             }
         }
@@ -325,7 +325,7 @@ impl AtomCollection {
         let id = node.id();
         let parent_ids = [parent_ids, &[id]].concat();
 
-        log::debug!(
+        tracing::debug!(
             "CST node: {}{:?} - Named: {}",
             "  ".repeat(level),
             node,
@@ -333,7 +333,7 @@ impl AtomCollection {
         );
 
         if node.end_byte() == node.start_byte() {
-            log::debug!("Skipping zero-byte node: {node:?}");
+            tracing::debug!("Skipping zero-byte node: {node:?}");
         } else if node.child_count() == 0 || self.specified_leaf_nodes.contains(&node.id()) {
             self.atoms.push(Atom::Leaf {
                 content: String::from(node.utf8_text(source)?),
@@ -357,7 +357,7 @@ impl AtomCollection {
         // TODO: Pre-populate these
         let target_node = self.first_leaf(node);
 
-        log::debug!("Prepending {atom:?} to node {:?}", target_node,);
+        tracing::debug!("Prepending {atom:?} to node {:?}", target_node,);
 
         self.prepend.entry(target_node.id()).or_default().push(atom);
     }
@@ -367,7 +367,7 @@ impl AtomCollection {
         let atom = self.wrap(atom, predicates);
         let target_node = self.last_leaf(node);
 
-        log::debug!("Appending {atom:?} to node {:?}", target_node,);
+        tracing::debug!("Appending {atom:?} to node {:?}", target_node,);
 
         self.append.entry(target_node.id()).or_default().push(atom);
     }
@@ -375,7 +375,7 @@ impl AtomCollection {
     fn begin_scope_before(&mut self, node: &Node, scope_id: &str) {
         let target_node = self.first_leaf(node);
 
-        log::debug!("Begin scope {scope_id:?} before node {:?}", target_node,);
+        tracing::debug!("Begin scope {scope_id:?} before node {:?}", target_node,);
 
         self.scope_begin
             .entry(target_node.id())
@@ -391,7 +391,7 @@ impl AtomCollection {
     fn end_scope_after(&mut self, node: &Node, scope_id: &str) {
         let target_node = self.last_leaf(node);
 
-        log::debug!("End scope {scope_id:?} after node {:?}", target_node,);
+        tracing::debug!("End scope {scope_id:?} after node {:?}", target_node,);
 
         self.scope_end
             .entry(target_node.id())
@@ -410,7 +410,7 @@ impl AtomCollection {
                 let parent_id = parent.id();
 
                 if self.multi_line_nodes.contains(&parent_id) {
-                    log::debug!(
+                    tracing::debug!(
                         "Expanding softline to hardline in node {:?} with parent {}: {:?}",
                         node,
                         parent_id,
@@ -418,7 +418,7 @@ impl AtomCollection {
                     );
                     Atom::Hardline
                 } else if spaced {
-                    log::debug!(
+                    tracing::debug!(
                         "Expanding softline to space in node {:?} with parent {}: {:?}",
                         node,
                         parent_id,
@@ -509,7 +509,7 @@ impl AtomCollection {
                                 }
                             }
                         } else {
-                            log::warn!("Closing unopened scope {scope_id:?}");
+                            tracing::warn!("Closing unopened scope {scope_id:?}");
                             force_apply_modifications = true;
                         }
                     }
@@ -520,7 +520,7 @@ impl AtomCollection {
                 {
                     vec.push(atom);
                 } else {
-                    log::warn!("Found scoped softline {:?} outside of its scope", atom);
+                    tracing::warn!("Found scoped softline {:?} outside of its scope", atom);
                     force_apply_modifications = true;
                 }
             // Register the ScopedConditional in the correct scope
@@ -529,7 +529,7 @@ impl AtomCollection {
                 {
                     vec.push(atom);
                 } else {
-                    log::warn!("Found scoped conditional {:?} outside of its scope", atom);
+                    tracing::warn!("Found scoped conditional {:?} outside of its scope", atom);
                     force_apply_modifications = true;
                 }
             }
@@ -539,7 +539,7 @@ impl AtomCollection {
             .filter_map(|(scope_id, vec)| if vec.is_empty() { None } else { Some(scope_id) })
             .collect();
         if !still_opened.is_empty() {
-            log::warn!("Some scopes have been left opened: {:?}", still_opened);
+            tracing::warn!("Some scopes have been left opened: {:?}", still_opened);
             force_apply_modifications = true;
         }
 
@@ -551,7 +551,7 @@ impl AtomCollection {
                     if let Some(replacement) = modifications.remove(id) {
                         *atom = replacement;
                     } else {
-                        log::warn!(
+                        tracing::warn!(
                             "Found scoped softline {:?}, but was unable to replace it.",
                             atom
                         );
@@ -561,7 +561,7 @@ impl AtomCollection {
                     if let Some(replacement) = modifications.remove(id) {
                         *atom = replacement;
                     } else {
-                        log::warn!(
+                        tracing::warn!(
                             "Found scoped conditional {:?}, but was unable to replace it.",
                             atom
                         );
@@ -593,7 +593,7 @@ impl AtomCollection {
             }
         }
         if delete_level != 0 {
-            log::warn!("The number of DeleteBegin is different from the number of DeleteEnd.");
+            tracing::warn!("The number of DeleteBegin is different from the number of DeleteEnd.");
         }
     }
 
@@ -673,7 +673,7 @@ impl AtomCollection {
         // preceding spaces.
         collapse_spaces_before_antispace(&mut self.atoms);
 
-        log::debug!("List of atoms after post-processing: {:?}", self.atoms);
+        tracing::debug!("List of atoms after post-processing: {:?}", self.atoms);
     }
 
     fn next_id(&mut self) -> usize {
@@ -789,7 +789,7 @@ fn detect_multi_line_nodes(dfs_nodes: &[Node]) -> HashSet<usize> {
             let end_line = node.end_position().row();
 
             if end_line > start_line {
-                log::debug!("Multi-line node {}: {:?}", node.id(), node,);
+                tracing::debug!("Multi-line node {}: {:?}", node.id(), node,);
                 return Some(node.id());
             }
 
@@ -810,7 +810,7 @@ fn detect_line_breaks(dfs_nodes: &[Node], minimum_line_breaks: u32) -> NodesWith
             let next = right.start_position().row();
 
             if next >= last + minimum_line_breaks {
-                log::debug!(
+                tracing::debug!(
                     "There are at least {} line breaks between {:?} and {:?}",
                     minimum_line_breaks,
                     left.id(),
