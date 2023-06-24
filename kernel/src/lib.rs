@@ -1,5 +1,6 @@
 mod de_bruijn;
 pub mod expr;
+pub mod vec_map;
 
 pub use de_bruijn::*;
 

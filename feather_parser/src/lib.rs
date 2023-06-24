@@ -280,14 +280,14 @@ fn process_binder(
     node: Node,
     locals: &[Str],
 ) -> ParseDr<Binder> {
-    let binder = node.child_by_field_name("binder").unwrap();
+    let binder_structure = node.child_by_field_name("binder_structure").unwrap();
     let arrow = node.child_by_field_name("arrow").unwrap();
     let body = node.child_by_field_name("body").unwrap();
     process_binder_structure(
         db,
         source,
         code,
-        binder,
+        binder_structure,
         locals,
         match arrow.utf8_text(code.as_bytes()).unwrap() {
             "->" => InvocationStyle::Once,

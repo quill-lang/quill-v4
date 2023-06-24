@@ -98,14 +98,14 @@ module.exports = grammar({
 
       fun: $ => seq(
         'fun',
-        field('binder', $._binder_structure),
+        field('binder_structure', $._binder_structure),
         field('arrow', choice('->', '=>')),
         field('body', $._expr),
       ),
 
       for: $ => seq(
         'for',
-        field('binder', $._binder_structure),
+        field('binder_structure', $._binder_structure),
         field('arrow', choice('->', '=>')),
         field('body', $._expr),
       ),
@@ -164,10 +164,12 @@ module.exports = grammar({
 
       fix: $ => seq(
         'fix',
-        field('binder', $._binder_structure),
-        'return',
+        field('binder_structure', $._binder_structure),
+        '=>',
         field('return', $._expr),
         'with',
+        field('rec_name', $.identifier),
+        ';',
         field('body', $._expr),
       ),
 
@@ -190,7 +192,7 @@ module.exports = grammar({
         'take',
         field('ident', $.identifier),
         '{',
-        field('proof', $.take_proof),
+        field('proof', repeat($.take_proof)),
         '}',
         ';',
         field('body', $._expr),
@@ -203,6 +205,10 @@ module.exports = grammar({
         ',',
       ),
 
-      in: $ => prec.left(5, seq($._expr, 'in', $._expr)),
+      in: $ => prec.left(5, seq(
+        field('reference', $._expr),
+        'in',
+        field('target', $._expr)
+      )),
     }
   });

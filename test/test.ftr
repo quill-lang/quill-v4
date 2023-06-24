@@ -1,7 +1,7 @@
 module test::test
 
-// def hello: Bool =
-//     intro Bool/True {}
+def hello: Bool =
+    intro Bool/True {}
 
 // def foo: Bool =
 //     match x return Bool {
