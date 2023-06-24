@@ -4,50 +4,50 @@
 (identifier) @leaf
 
 [
-    (definition)
-    (line_comment)
+  (definition)
+  (line_comment)
 ] @allow_blank_line_before
 
 (definition body: _
-    @prepend_input_softline @prepend_indent_start @append_indent_end)
+  @prepend_input_softline @prepend_indent_start @append_indent_end)
 
 (match_body
-    .
-    "{" @append_spaced_softline
-    _
-    "}" @prepend_spaced_softline
-    .
+  .
+  "{" @append_spaced_softline
+  _
+  "}" @prepend_spaced_softline
+  .
 )
 
 (match_variant
-    "," @append_input_softline
-    .
+  "," @append_input_softline
+  .
 )
 
 [
-    "module"
-    "def"
-    "fun"
-    "for"
-    "let"
-    "Sort"
-    "inst"
-    "intro"
-    "match"
-    "return"
-    "fix"
-    "ref"
-    "loan"
-    "as"
-    "with"
-    "take"
-    "in"
-    "="
-    "->"
-    "=>"
-    "{"
-    "}"
-    "0"
+  "module"
+  "def"
+  "fun"
+  "for"
+  "let"
+  "Sort"
+  "inst"
+  "intro"
+  "match"
+  "return"
+  "fix"
+  "ref"
+  "loan"
+  "as"
+  "with"
+  "take"
+  "in"
+  "="
+  "->"
+  "=>"
+  "{"
+  "}"
+  "0"
 ] @prepend_space @append_space
 
 ; Input softlines before and after all comments. This means that the input
@@ -78,3 +78,8 @@
 ] @prepend_indent_end
 
 ";" @append_spaced_softline
+
+[
+  "->"
+  "=>"
+] @append_input_softline

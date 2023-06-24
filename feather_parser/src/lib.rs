@@ -215,10 +215,39 @@ fn process_expr(
             locals,
         ),
         "local" => process_local(db, source, code, node, locals),
+        "app" => process_app(db, source, code, node, locals),
         "for" => process_for(db, source, code, node, locals),
         "fun" => process_fun(db, source, code, node, locals),
+        "let" => process_let(db, source, code, node, locals),
         "sort" => Dr::new(process_sort(db, source, code, node)),
+        "inst" => Dr::new(process_inst(db, source, code, node)),
+        "intro" => process_intro(db, source, code, node, locals),
+        "match" => process_match(db, source, code, node, locals),
+        "fix" => process_fix(db, source, code, node, locals),
+        "ref" => process_ref(db, source, code, node, locals),
+        "deref" => process_deref(db, source, code, node, locals),
+        "loan" => process_loan(db, source, code, node, locals),
+        "take" => process_take(db, source, code, node, locals),
+        "in" => process_in(db, source, code, node, locals),
         value => todo!("{value}"),
+    }
+}
+
+fn process_de_bruijn_index(
+    db: &dyn Db,
+    source: Source,
+    code: &Arc<String>,
+    node: Node,
+    locals: &[Str],
+) -> ParseDr<DeBruijnIndex> {
+    let name = Str::new(db.up(), node.utf8_text(code.as_bytes()).unwrap().to_owned());
+    if let Some(index) = locals.iter().position(|value| *value == name) {
+        Dr::new(DeBruijnIndex::new(index as u32))
+    } else {
+        Dr::new(DeBruijnIndex::zero()).with(ParseError::UnknownVariable {
+            src: source.data(db.up()),
+            label_span: node.byte_range().into(),
+        })
     }
 }
 
@@ -229,17 +258,36 @@ fn process_local(
     node: Node,
     locals: &[Str],
 ) -> ParseDr<Expression> {
-    let name = Str::new(db.up(), node.utf8_text(code.as_bytes()).unwrap().to_owned());
-    if let Some(index) = locals.iter().position(|value| *value == name) {
-        Dr::new(Expression::local(db.up(), DeBruijnIndex::new(index as u32)))
-    } else {
-        Dr::new(Expression::local(db.up(), DeBruijnIndex::zero())).with(
-            ParseError::UnknownVariable {
-                src: source.data(db.up()),
-                label_span: node.byte_range().into(),
-            },
+    assert_eq!(node.kind(), "local");
+    process_de_bruijn_index(db, source, code, node, locals)
+        .map(|index| Expression::new_local(db.up(), index))
+}
+
+fn process_app(
+    db: &dyn Db,
+    source: Source,
+    code: &Arc<String>,
+    node: Node,
+    locals: &[Str],
+) -> ParseDr<Expression> {
+    assert_eq!(node.kind(), "app");
+    process_expr(
+        db,
+        source,
+        code,
+        node.child_by_field_name("left").unwrap(),
+        locals,
+    )
+    .bind(|left| {
+        process_expr(
+            db,
+            source,
+            code,
+            node.child_by_field_name("right").unwrap(),
+            locals,
         )
-    }
+        .map(|right| Expression::new_apply(db.up(), left, right))
+    })
 }
 
 fn process_binder_structure(
@@ -311,7 +359,7 @@ fn process_for(
     locals: &[Str],
 ) -> ParseDr<Expression> {
     assert_eq!(node.kind(), "for");
-    process_binder(db, source, code, node, locals).map(|binder| Expression::pi(db.up(), binder))
+    process_binder(db, source, code, node, locals).map(|binder| Expression::new_pi(db.up(), binder))
 }
 
 fn process_fun(
@@ -322,14 +370,362 @@ fn process_fun(
     locals: &[Str],
 ) -> ParseDr<Expression> {
     assert_eq!(node.kind(), "fun");
-    process_binder(db, source, code, node, locals).map(|binder| Expression::lambda(db.up(), binder))
+    process_binder(db, source, code, node, locals)
+        .map(|binder| Expression::new_lambda(db.up(), binder))
+}
+
+fn process_let(
+    db: &dyn Db,
+    source: Source,
+    code: &Arc<String>,
+    node: Node,
+    locals: &[Str],
+) -> ParseDr<Expression> {
+    assert_eq!(node.kind(), "let");
+    let name = process_identifier(db, source, code, node.child_by_field_name("name").unwrap());
+    let to_assign = process_expr(
+        db,
+        source,
+        code,
+        node.child_by_field_name("to_assign").unwrap(),
+        locals,
+    );
+    let mut locals = locals.to_vec();
+    locals.insert(0, name.contents);
+    let body = process_expr(
+        db,
+        source,
+        code,
+        node.child_by_field_name("body").unwrap(),
+        &locals,
+    );
+    to_assign.bind(|to_assign| {
+        body.map(|body| Expression::new_let(db.up(), name.contents, to_assign, body))
+    })
 }
 
 fn process_sort(db: &dyn Db, source: Source, code: &Arc<String>, node: Node) -> Expression {
-    Expression::sort(
+    Expression::new_sort(
         db.up(),
         process_universe(source, code, node.child_by_field_name("universe").unwrap()).contents,
     )
+}
+
+fn process_inst(db: &dyn Db, source: Source, code: &Arc<String>, node: Node) -> Expression {
+    assert_eq!(node.kind(), "inst");
+    Expression::new_inst(
+        db.up(),
+        process_path(db, source, code, node.child_by_field_name("path").unwrap()).contents,
+    )
+}
+
+fn process_intro(
+    db: &dyn Db,
+    source: Source,
+    code: &Arc<String>,
+    node: Node,
+    locals: &[Str],
+) -> ParseDr<Expression> {
+    assert_eq!(node.kind(), "intro");
+    let path = process_path(db, source, code, node.child_by_field_name("path").unwrap());
+    let parameters = Dr::sequence_unfail(
+        node.children_by_field_name("param", &mut node.walk())
+            .map(|param| process_expr(db, source, code, param, locals)),
+    );
+
+    let variant = process_identifier(
+        db,
+        source,
+        code,
+        node.child_by_field_name("variant").unwrap(),
+    );
+
+    let fields = Dr::sequence_unfail(node.children_by_field_name("field", &mut node.walk()).map(
+        |field| {
+            assert_eq!(node.kind(), "intro_field");
+            let name =
+                process_identifier(db, source, code, field.child_by_field_name("name").unwrap());
+            process_expr(
+                db,
+                source,
+                code,
+                node.child_by_field_name("value").unwrap(),
+                locals,
+            )
+            .map(|value| (name.contents, value))
+        },
+    ));
+
+    parameters.bind(|parameters| {
+        fields.map(|fields| {
+            Expression::new_intro(
+                db.up(),
+                path.contents,
+                parameters,
+                variant.contents,
+                fields.into(),
+            )
+        })
+    })
+}
+
+fn process_match(
+    db: &dyn Db,
+    source: Source,
+    code: &Arc<String>,
+    node: Node,
+    locals: &[Str],
+) -> ParseDr<Expression> {
+    assert_eq!(node.kind(), "match");
+
+    let subject = process_expr(
+        db,
+        source,
+        code,
+        node.child_by_field_name("subject").unwrap(),
+        locals,
+    );
+
+    let return_ty = process_expr(
+        db,
+        source,
+        code,
+        node.child_by_field_name("return").unwrap(),
+        locals,
+    );
+
+    let body = node.child_by_field_name("body").unwrap();
+    let cases = Dr::sequence_unfail(
+        body.children_by_field_name("variant", &mut body.walk())
+            .map(|variant| {
+                let name = process_identifier(
+                    db,
+                    source,
+                    code,
+                    variant.child_by_field_name("name").unwrap(),
+                );
+                process_expr(
+                    db,
+                    source,
+                    code,
+                    variant.child_by_field_name("value").unwrap(),
+                    locals,
+                )
+                .map(|value| (name.contents, value))
+            }),
+    );
+
+    subject.bind(|subject| {
+        return_ty.bind(|return_ty| {
+            cases.map(|cases| Expression::new_match(db.up(), subject, return_ty, cases.into()))
+        })
+    })
+}
+
+fn process_fix(
+    db: &dyn Db,
+    source: Source,
+    code: &Arc<String>,
+    node: Node,
+    locals: &[Str],
+) -> ParseDr<Expression> {
+    assert_eq!(node.kind(), "fix");
+
+    let binder_structure = process_binder_structure(
+        db,
+        source,
+        code,
+        node.child_by_field_name("binder_structure").unwrap(),
+        locals,
+        InvocationStyle::Many,
+    );
+
+    binder_structure.bind(|binder_structure| {
+        let mut locals = locals.to_vec();
+        locals.insert(0, binder_structure.bound.name);
+        let return_ty = process_expr(
+            db,
+            source,
+            code,
+            node.child_by_field_name("return").unwrap(),
+            &locals,
+        );
+
+        let rec_name = process_identifier(
+            db,
+            source,
+            code,
+            node.child_by_field_name("rec_name").unwrap(),
+        );
+        locals.insert(0, rec_name.contents);
+        let body = process_expr(
+            db,
+            source,
+            code,
+            node.child_by_field_name("body").unwrap(),
+            &locals,
+        );
+
+        return_ty.bind(|return_ty| {
+            body.map(|body| {
+                Expression::new_fix(
+                    db.up(),
+                    Binder {
+                        structure: binder_structure,
+                        body: return_ty,
+                    },
+                    rec_name.contents,
+                    body,
+                )
+            })
+        })
+    })
+}
+
+fn process_ref(
+    db: &dyn Db,
+    source: Source,
+    code: &Arc<String>,
+    node: Node,
+    locals: &[Str],
+) -> ParseDr<Expression> {
+    process_expr(
+        db,
+        source,
+        code,
+        node.child_by_field_name("ty").unwrap(),
+        locals,
+    )
+    .map(|ty| Expression::new_ref(db.up(), ty))
+}
+
+fn process_deref(
+    db: &dyn Db,
+    source: Source,
+    code: &Arc<String>,
+    node: Node,
+    locals: &[Str],
+) -> ParseDr<Expression> {
+    process_expr(
+        db,
+        source,
+        code,
+        node.child_by_field_name("value").unwrap(),
+        locals,
+    )
+    .map(|ty| Expression::new_deref(db.up(), ty))
+}
+
+fn process_loan(
+    db: &dyn Db,
+    source: Source,
+    code: &Arc<String>,
+    node: Node,
+    locals: &[Str],
+) -> ParseDr<Expression> {
+    assert_eq!(node.kind(), "loan");
+
+    let local = process_de_bruijn_index(
+        db,
+        source,
+        code,
+        node.child_by_field_name("ident").unwrap(),
+        locals,
+    );
+    let loan_as = process_identifier(db, source, code, node.child_by_field_name("as").unwrap());
+    let with = process_identifier(db, source, code, node.child_by_field_name("with").unwrap());
+
+    let mut locals = locals.to_vec();
+    locals.insert(0, loan_as.contents);
+    locals.insert(0, with.contents);
+    let body = process_expr(
+        db,
+        source,
+        code,
+        node.child_by_field_name("body").unwrap(),
+        &locals,
+    );
+
+    local.bind(|local| {
+        body.map(|body| Expression::new_loan(db.up(), local, loan_as.contents, with.contents, body))
+    })
+}
+
+fn process_take(
+    db: &dyn Db,
+    source: Source,
+    code: &Arc<String>,
+    node: Node,
+    locals: &[Str],
+) -> ParseDr<Expression> {
+    assert_eq!(node.kind(), "take");
+
+    let local = process_de_bruijn_index(
+        db,
+        source,
+        code,
+        node.child_by_field_name("ident").unwrap(),
+        locals,
+    );
+    let proofs = Dr::sequence_unfail(node.children_by_field_name("proof", &mut node.walk()).map(
+        |proof| {
+            let local = process_de_bruijn_index(
+                db,
+                source,
+                code,
+                proof.child_by_field_name("local").unwrap(),
+                locals,
+            );
+            let proof_term = process_expr(
+                db,
+                source,
+                code,
+                proof.child_by_field_name("proof").unwrap(),
+                locals,
+            );
+            local.bind(|local| proof_term.map(|proof_term| (local, proof_term)))
+        },
+    ));
+    let body = process_expr(
+        db,
+        source,
+        code,
+        node.child_by_field_name("body").unwrap(),
+        locals,
+    );
+
+    local.bind(|local| {
+        proofs.bind(|proofs| {
+            body.map(|body| Expression::new_take(db.up(), local, proofs.into(), body))
+        })
+    })
+}
+
+fn process_in(
+    db: &dyn Db,
+    source: Source,
+    code: &Arc<String>,
+    node: Node,
+    locals: &[Str],
+) -> ParseDr<Expression> {
+    assert_eq!(node.kind(), "in");
+    process_expr(
+        db,
+        source,
+        code,
+        node.child_by_field_name("reference").unwrap(),
+        locals,
+    )
+    .bind(|reference| {
+        process_expr(
+            db,
+            source,
+            code,
+            node.child_by_field_name("target").unwrap(),
+            locals,
+        )
+        .map(|target| Expression::new_in(db.up(), reference, target))
+    })
 }
 
 #[derive(Error, Diagnostic, Debug, Clone, PartialEq, Eq, Hash)]

@@ -26,11 +26,12 @@ fn main() {
     );
     let source = Source::new(&db, path, SourceType::Feather);
 
-    if let Some(result) = feather_parser::parse_module(&db, source)
+    if let Some(_result) = feather_parser::parse_module(&db, source)
         .to_reports()
         .print_reports()
     {
-        tracing::info!("{:#?}", result);
+        tracing::info!("successfully parsed module");
+        // tracing::info!("{:#?}", result);
     }
 
     // TODO: <https://github.com/salsa-rs/salsa/blob/master/examples-2022/lazy-input/src/main.rs>

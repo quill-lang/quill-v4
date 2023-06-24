@@ -66,7 +66,7 @@ pub enum ExpressionData {
     /// A type of references.
     Ref(Expression),
     /// Dereference the inner expression.
-    Dereference(Expression),
+    Deref(Expression),
     Loan {
         /// The local variable to loan.
         local: DeBruijnIndex,
@@ -97,23 +97,144 @@ pub enum ExpressionData {
 
 impl Expression {
     /// Creates a new `Local` expression.
-    pub fn local(db: &dyn Db, index: DeBruijnIndex) -> Expression {
+    pub fn new_local(db: &dyn Db, index: DeBruijnIndex) -> Expression {
         Expression::new(db, ExpressionData::Local(index))
     }
 
+    /// Creates a new `Apply` expression.
+    pub fn new_apply(db: &dyn Db, left: Expression, right: Expression) -> Expression {
+        Expression::new(db, ExpressionData::Apply { left, right })
+    }
+
     /// Creates a new `Lambda` expression.
-    pub fn lambda(db: &dyn Db, binder: Binder) -> Expression {
+    pub fn new_lambda(db: &dyn Db, binder: Binder) -> Expression {
         Expression::new(db, ExpressionData::Lambda(binder))
     }
 
     /// Creates a new `Pi` expression.
-    pub fn pi(db: &dyn Db, binder: Binder) -> Expression {
+    pub fn new_pi(db: &dyn Db, binder: Binder) -> Expression {
         Expression::new(db, ExpressionData::Pi(binder))
     }
 
+    /// Creates a new `Let` expression.
+    pub fn new_let(db: &dyn Db, name: Str, to_assign: Expression, body: Expression) -> Expression {
+        Expression::new(
+            db,
+            ExpressionData::Let {
+                name,
+                to_assign,
+                body,
+            },
+        )
+    }
+
     /// Creates a new `Sort` expression.
-    pub fn sort(db: &dyn Db, universe: Universe) -> Expression {
+    pub fn new_sort(db: &dyn Db, universe: Universe) -> Expression {
         Expression::new(db, ExpressionData::Sort(universe))
+    }
+
+    /// Creates a new `Inst` expression.
+    pub fn new_inst(db: &dyn Db, path: Path) -> Expression {
+        Expression::new(db, ExpressionData::Inst(path))
+    }
+
+    /// Creates a new `Intro` expression.
+    pub fn new_intro(
+        db: &dyn Db,
+        path: Path,
+        parameters: Vec<Expression>,
+        variant: Str,
+        fields: VecMap<Str, Expression>,
+    ) -> Expression {
+        Expression::new(
+            db,
+            ExpressionData::Intro {
+                path,
+                parameters,
+                variant,
+                fields,
+            },
+        )
+    }
+
+    /// Creates a new `match` expression.
+    pub fn new_match(
+        db: &dyn Db,
+        subject: Expression,
+        return_ty: Expression,
+        cases: VecMap<Str, Expression>,
+    ) -> Expression {
+        Expression::new(
+            db,
+            ExpressionData::Match {
+                subject,
+                return_ty,
+                cases,
+            },
+        )
+    }
+
+    /// Creates a new `fix` expression.
+    pub fn new_fix(db: &dyn Db, binder: Binder, rec_name: Str, body: Expression) -> Expression {
+        Expression::new(
+            db,
+            ExpressionData::Fix {
+                binder,
+                rec_name,
+                body,
+            },
+        )
+    }
+
+    /// Creates a new `Ref` expression.
+    pub fn new_ref(db: &dyn Db, ty: Expression) -> Expression {
+        Expression::new(db, ExpressionData::Ref(ty))
+    }
+
+    /// Creates a new `Deref` expression.
+    pub fn new_deref(db: &dyn Db, value: Expression) -> Expression {
+        Expression::new(db, ExpressionData::Deref(value))
+    }
+
+    /// Creates a new `Loan` expression.
+    pub fn new_loan(
+        db: &dyn Db,
+        local: DeBruijnIndex,
+        loan_as: Str,
+        with: Str,
+        body: Expression,
+    ) -> Expression {
+        Expression::new(
+            db,
+            ExpressionData::Loan {
+                local,
+                loan_as,
+                with,
+                body,
+            },
+        )
+    }
+
+    /// Creates a new `Take` expression.
+    pub fn new_take(
+        db: &dyn Db,
+        local: DeBruijnIndex,
+        proofs: VecMap<DeBruijnIndex, Expression>,
+        body: Expression,
+    ) -> Expression {
+        Expression::new(
+            db,
+            ExpressionData::Take {
+                local,
+                proofs,
+                body,
+            },
+        )
+    }
+
+    /// Creates a new `In` expression.
+    pub fn new_in(db: &dyn Db, reference: Expression, target: Expression) -> Expression {
+        Expression::new(db, ExpressionData::In { reference, target })
     }
 }
 

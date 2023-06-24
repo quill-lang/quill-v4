@@ -61,7 +61,10 @@ module.exports = grammar({
 
       local: $ => $.identifier,
 
-      app: $ => prec.left(10, seq($._expr, $._expr)),
+      app: $ => prec.left(10, seq(
+        field('left', $._expr),
+        field('right', $._expr)
+      )),
 
       _binder_structure: $ => choice(
         $.explicit,
@@ -112,16 +115,16 @@ module.exports = grammar({
 
       let: $ => seq(
         'let',
-        $.identifier,
+        field('name', $.identifier),
         '=',
-        $._expr,
+        field('to_assign', $._expr),
         ';',
-        $._expr,
+        field('body', $._expr),
       ),
 
       sort: $ => seq('Sort', field('universe', $.universe)),
 
-      inst: $ => seq('inst', $.path),
+      inst: $ => seq('inst', field('path', $.path)),
 
       intro: $ => seq(
         'intro',
@@ -135,18 +138,18 @@ module.exports = grammar({
       ),
 
       intro_field: $ => seq(
-        $.identifier,
+        field('name', $.identifier),
         '=',
-        $._expr,
+        field('value', $._expr),
         ',',
       ),
 
       match: $ => seq(
         'match',
-        field('arg', $._expr),
+        field('subject', $._expr),
         'return',
         field('return', $._expr),
-        $.match_body,
+        field('body', $.match_body)
       ),
 
       match_body: $ => seq(
@@ -156,9 +159,9 @@ module.exports = grammar({
       ),
 
       match_variant: $ => seq(
-        $.identifier,
+        field('name', $.identifier),
         '->',
-        $._expr,
+        field('value', $._expr),
         ',',
       ),
 
@@ -173,9 +176,9 @@ module.exports = grammar({
         field('body', $._expr),
       ),
 
-      ref: $ => prec.left(10, seq('ref', $._expr_no_app)),
+      ref: $ => prec.left(10, seq('ref', field('ty', $._expr_no_app))),
 
-      deref: $ => seq('*', $._expr),
+      deref: $ => seq('*', field('value', $._expr)),
 
       loan: $ => seq(
         'loan',
@@ -199,9 +202,9 @@ module.exports = grammar({
       ),
 
       take_proof: $ => seq(
-        $.identifier,
+        field('local', $.identifier),
         '->',
-        $._expr,
+        field('proof', $._expr),
         ',',
       ),
 
