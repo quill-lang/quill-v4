@@ -24,10 +24,10 @@ pub use whnf::*;
 /// in most instances you should call [`crate::certify_definition`] or [`crate::get_certified_definition`].
 /// These functions are able to parse and certify both feather and quill definitions.
 pub fn certify_definition(
-    db: &dyn Db,
-    path: Path,
-    def: &Definition,
-    origin: DefinitionOrigin,
+    _db: &dyn Db,
+    _path: Path,
+    _def: &Definition,
+    _origin: DefinitionOrigin,
 ) -> Dr<CertifiedDefinition> {
     todo!()
 }

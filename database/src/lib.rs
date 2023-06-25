@@ -117,7 +117,7 @@ fn write_expression(
         } => {
             write!(w, "let {} = ", name.text(db))?;
             write_expression(db, to_assign, locals, w)?;
-            write!(w, " ;\n")?;
+            writeln!(w, " ;")?;
             let mut new_locals = locals.to_vec();
             new_locals.insert(0, name);
             write_expression(db, body, &new_locals, w)
@@ -310,7 +310,7 @@ impl kernel::Db for FeatherDatabase {
                 None => DynDr::new_err(GetDefinitionError {
                     src: source.data(self),
                     definition: name.text(self).to_owned(),
-                    module: path.display(self).to_owned(),
+                    module: path.display(self),
                 })
                 .to_dynamic(),
             }

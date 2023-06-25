@@ -1,6 +1,5 @@
 use crate::{definition::Definition, expr::Universe};
 
-
 use std::fmt::Display;
 
 /// A definition that has been verified by the type checker.
@@ -23,6 +22,7 @@ pub enum DefinitionOrigin {
 
 impl CertifiedDefinition {
     /// Certified definitions can only be created by the type checker in the kernel.
+    #[allow(dead_code)]
     pub(in crate::type_check) fn new(
         def: Definition,
         universe: Universe,

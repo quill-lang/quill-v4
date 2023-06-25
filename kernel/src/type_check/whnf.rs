@@ -19,8 +19,9 @@ impl Expression {
 }
 
 /// Tries to put an expression in weak head normal form, but does not perform delta reduction.
-fn whnf_core(db: &dyn Db, e: Expression) -> Expression {
-    match e.data(db) {
-        _ => e,
-    }
+fn whnf_core(_db: &dyn Db, e: Expression) -> Expression {
+    e
+    // match e.data(db) {
+    //     _ => e,
+    // }
 }

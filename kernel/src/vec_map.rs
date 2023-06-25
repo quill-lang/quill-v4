@@ -12,11 +12,23 @@ impl<K, V> VecMap<K, V> {
         Self(Vec::new())
     }
 
-    pub fn into_iter(self) -> impl Iterator<Item = (K, V)> {
-        self.0.into_iter()
-    }
-
     pub fn iter(&self) -> impl Iterator<Item = &(K, V)> {
         self.0.iter()
+    }
+}
+
+impl<K, V> Default for VecMap<K, V> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<K, V> IntoIterator for VecMap<K, V> {
+    type Item = (K, V);
+
+    type IntoIter = <Vec<(K, V)> as IntoIterator>::IntoIter;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
     }
 }
