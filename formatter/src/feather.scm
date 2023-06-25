@@ -1,4 +1,4 @@
-; A query that allows for the automatic formatting of Feather code.
+; A query that allows for the automatic formatting of feather code.
 ; See https://github.com/tweag/topiary/blob/main/languages/rust.scm for inspiration.
 
 (identifier) @leaf

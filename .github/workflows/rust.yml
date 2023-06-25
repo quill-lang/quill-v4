@@ -35,19 +35,23 @@ jobs:
       - name: Check formatting
         uses: actions-rs/cargo@v1
         with:
-          command: fmt --check --workspace --verbose
+          command: fmt
+          args: --check
 
       - name: Run clippy
         uses: actions-rs/cargo@v1
         with:
-          command: clippy --workspace --verbose
+          command: clippy
+          args: --workspace --verbose -- -D warnings
 
       - name: Build
         uses: actions-rs/cargo@v1
         with:
-          command: build --workspace --verbose
+          command: build
+          args: --workspace --verbose
 
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
-          command: test --workspace --verbose
+          command: test
+          args: --workspace --verbose

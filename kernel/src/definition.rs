@@ -7,5 +7,6 @@ pub struct Definition {
     pub name: WithProvenance<Str>,
     pub usage: Usage,
     pub ty: Expression,
-    pub body: Expression,
+    /// Empty if the body contained an error or was not given.
+    pub body: Option<Expression>,
 }

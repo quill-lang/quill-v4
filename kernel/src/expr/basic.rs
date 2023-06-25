@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use files::{Path, Str};
 
 use crate::{de_bruijn::DeBruijnIndex, vec_map::VecMap, Db};
@@ -93,6 +95,8 @@ pub enum ExpressionData {
         /// The target of the `in` expression.
         target: Expression,
     },
+    LocalConstant(LocalConstant),
+    Hole(Hole),
 }
 
 impl Expression {
@@ -236,6 +240,16 @@ impl Expression {
     pub fn new_in(db: &dyn Db, reference: Expression, target: Expression) -> Expression {
         Expression::new(db, ExpressionData::In { reference, target })
     }
+
+    /// Creates a new `LocalConstant` expression.
+    pub fn new_local_constant(db: &dyn Db, local_constant: LocalConstant) -> Expression {
+        Expression::new(db, ExpressionData::LocalConstant(local_constant))
+    }
+
+    /// Creates a new `Hole` expression.
+    pub fn new_hole(db: &dyn Db, hole: Hole) -> Expression {
+        Expression::new(db, ExpressionData::Hole(hole))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -293,3 +307,49 @@ pub struct Binder {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Universe(pub u32);
+
+/// An identifier for a local constant.
+/// These are considered unique inside a given query.
+///
+/// An [`Ord`] implementation is provided to aid with determinism.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct LocalConstantId(pub u32);
+
+/// De Bruijn indices (bound variables) are replaced with local constants while we're inside the function body.
+/// Should not be used in functions manually.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct LocalConstant {
+    /// An id created to ensure that local constants with the same name are not considered equal.
+    /// All local constants with the same `id` must have the same `structure`, modulo filling holes or instantiating bound variables.
+    pub id: LocalConstantId,
+    /// The structure of the binder that introduced this local constant.
+    /// This field provides the type of this variable.
+    pub structure: BinderStructure,
+}
+
+/// An identifier for a hole.
+/// These are considered unique inside a given query.
+/// When a hole is filled, all holes with this ID are processed in the same way.
+///
+/// An [`Ord`] implementation is provided to aid with determinism.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct HoleId(pub u32);
+
+impl Display for HoleId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "?{}", self.0)
+    }
+}
+
+/// An inference variable.
+/// May have theoretically any type.
+/// Also called a *metavariable*, although this name is sometimes reserved for holes with no arguments.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Hole {
+    /// An index for this metavariable.
+    /// This is unique inside a particular query.
+    /// When a hole is filled, all holes with this ID are processed in the same way.
+    pub id: HoleId,
+    /// The type of this hole.
+    pub ty: Expression,
+}

@@ -34,7 +34,7 @@ pub fn parse_module(db: &dyn Db, source: Source) -> Dr<Module, ParseError, Parse
             let mut parser = tree_sitter::Parser::new();
             parser
                 .set_language(tree_sitter_feather::language())
-                .expect("Error loading Feather grammar");
+                .expect("Error loading feather grammar");
             let tree = parser.parse(&*code, None).unwrap();
 
             if tree.root_node().kind() != "source_file" {
@@ -141,7 +141,7 @@ fn process_definition(
                         Usage::Present
                     },
                     ty,
-                    body,
+                    body: Some(body),
                 },
             )
         })

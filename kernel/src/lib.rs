@@ -9,7 +9,7 @@ pub mod vec_map;
 use definition::Definition;
 use diagnostic::DynDr;
 use files::Path;
-use type_check::definition::{CertifiedDefinition, DefinitionOrigin};
+use type_check::{CertifiedDefinition, DefinitionOrigin};
 
 pub trait Db: files::Db + salsa::DbWithJar<Jar> {
     fn format_expression(&self, expr: expr::Expression) -> String;

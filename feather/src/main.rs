@@ -38,7 +38,11 @@ fn main() {
                 "def {}: {} =\n    {}",
                 definition.contents.name.contents.text(&db),
                 db.format_expression(definition.contents.ty),
-                db.format_expression(definition.contents.body),
+                definition
+                    .contents
+                    .body
+                    .map(|body| db.format_expression(body))
+                    .unwrap_or_else(|| "<no body>".to_owned()),
             );
         }
         // tracing::info!("{:#?}", result);

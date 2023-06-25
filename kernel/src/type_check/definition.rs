@@ -1,6 +1,6 @@
 use crate::{definition::Definition, expr::Universe};
 
-use files::Path;
+
 use std::fmt::Display;
 
 /// A definition that has been verified by the type checker.
@@ -17,12 +17,8 @@ pub struct CertifiedDefinition {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum DefinitionOrigin {
-    /// This definition was written directly in Feather code.
+    /// This definition was written directly in feather code.
     Feather,
-    /// This definition is the type declaration for an inductive type.
-    TypeDeclaration { inductive: Path },
-    /// This definition is an intro rule for an inductive type.
-    IntroRule { inductive: Path },
 }
 
 impl CertifiedDefinition {

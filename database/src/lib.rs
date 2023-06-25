@@ -235,6 +235,10 @@ fn write_expression(
             write!(w, " in ")?;
             write_expression(db, target, locals, w)
         }
+        ExpressionData::LocalConstant(constant) => {
+            write!(w, "{}", constant.structure.bound.name.text(db))
+        }
+        ExpressionData::Hole(hole) => write!(w, "{}", hole.id),
     }
 }
 
