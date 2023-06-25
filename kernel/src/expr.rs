@@ -1,6 +1,6 @@
 use files::{Path, Str};
 
-use crate::{vec_map::VecMap, Db, DeBruijnIndex};
+use crate::{de_bruijn::DeBruijnIndex, vec_map::VecMap, Db};
 
 #[salsa::tracked]
 pub struct Expression {

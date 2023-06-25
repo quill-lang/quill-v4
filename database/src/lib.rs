@@ -6,12 +6,21 @@ use std::{
     time::Duration,
 };
 
-use files::{InputFile, Str};
-use kernel::expr::{
-    ArgumentStyle, Binder, BinderStructure, Expression, ExpressionData, InvocationStyle, Usage,
+use diagnostic::{
+    miette::{diagnostic, Diagnostic},
+    DynDr,
+};
+use feather_parser::parse_module;
+use files::{InputFile, Path, Source, SourceData, SourceType, Str};
+use kernel::{
+    definition::Definition,
+    expr::{
+        ArgumentStyle, Binder, BinderStructure, Expression, ExpressionData, InvocationStyle, Usage,
+    },
 };
 use notify_debouncer_mini::notify::RecursiveMode;
 use salsa::Snapshot;
+use thiserror::Error;
 
 /// The main database that manages all the compiler's queries.
 #[salsa::db(files::Jar, kernel::Jar, feather_parser::Jar)]
@@ -283,6 +292,36 @@ impl kernel::Db for FeatherDatabase {
             Err(_) => unreachable!("should not error while writing to a string"),
         }
     }
+
+    fn get_definition_impl(&self, path: Path) -> DynDr<Definition> {
+        let (path, name) = path.split_last(self);
+        let source = Source::new(self, path, SourceType::Feather);
+        parse_module(self, source).to_dynamic().bind(|module| {
+            match module
+                .definitions
+                .into_iter()
+                .find(|def| def.contents.name.contents == name)
+            {
+                Some(def) => DynDr::new(def.contents),
+                None => DynDr::new_err(GetDefinitionError {
+                    src: source.data(self),
+                    definition: name.text(self).to_owned(),
+                    module: path.display(self).to_owned(),
+                })
+                .to_dynamic(),
+            }
+        })
+    }
+}
+
+#[derive(Error, Diagnostic, Debug, Clone, PartialEq, Eq, Hash)]
+#[error("could not find definition {definition} in module {module}")]
+#[diagnostic(help = "this is a bug in the compiler")]
+struct GetDefinitionError {
+    #[source_code]
+    src: SourceData,
+    definition: String,
+    module: String,
 }
 
 impl FeatherDatabase {

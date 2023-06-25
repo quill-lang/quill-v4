@@ -198,12 +198,15 @@ dependencies = [
 name = "database"
 version = "0.0.0"
 dependencies = [
+ "diagnostic",
  "feather-parser",
  "files",
  "formatter",
  "kernel",
+ "miette",
  "notify-debouncer-mini",
  "salsa-2022",
+ "thiserror",
  "tracing",
 ]
 
@@ -271,7 +274,6 @@ dependencies = [
  "tracing",
  "tree-sitter",
  "tree-sitter-feather",
- "upcast",
 ]
 
 [[package]]
@@ -283,7 +285,6 @@ dependencies = [
  "salsa-2022",
  "thiserror",
  "tracing",
- "upcast",
 ]
 
 [[package]]
@@ -457,7 +458,6 @@ dependencies = [
  "salsa-2022",
  "thiserror",
  "tracing",
- "upcast",
 ]
 
 [[package]]
@@ -1059,12 +1059,6 @@ name = "unicode-width"
 version = "0.1.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c0edd1e5b14653f783770bce4a4dabb4a5108a5370a5f5d8cfe8710c361f6c8b"
-
-[[package]]
-name = "upcast"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4a8a88129e2b27efd729ed3f7f79c532946051f6268c6a87e8617c4decf01ce"
 
 [[package]]
 name = "valuable"

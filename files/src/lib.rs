@@ -3,7 +3,6 @@ use std::{fmt::Debug, path::PathBuf, sync::Arc};
 use diagnostic::{miette, Dr};
 use miette::Diagnostic;
 use thiserror::Error;
-use upcast::UpcastFrom;
 
 #[salsa::jar(db = Db)]
 pub struct Jar(Str, Path, InputFile, Source, source);
@@ -12,15 +11,6 @@ pub trait Db: std::fmt::Debug + salsa::DbWithJar<Jar> {
     /// Loads source code from a file.
     /// This is performed lazily when needed.
     fn input_file(&self, path: std::path::PathBuf) -> std::io::Result<InputFile>;
-}
-
-impl<'a, T: Db + 'a> UpcastFrom<T> for dyn Db + 'a {
-    fn up_from(value: &T) -> &(dyn Db + 'a) {
-        value
-    }
-    fn up_from_mut(value: &mut T) -> &mut (dyn Db + 'a) {
-        value
-    }
 }
 
 /// A span of code in a given source file.

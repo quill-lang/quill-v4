@@ -1,31 +1,33 @@
+#![feature(trait_upcasting)]
+
 use std::{fmt::Debug, sync::Arc};
 
 use diagnostic::{miette::Diagnostic, Dr};
 use files::{Path, Source, SourceData, SourceSpan, Span, Str, WithProvenance};
 use kernel::{
+    de_bruijn::DeBruijnIndex,
+    definition::Definition,
     expr::{
         ArgumentStyle, Binder, BinderStructure, BoundVariable, Expression, InvocationStyle,
         Universe, Usage,
     },
-    DeBruijnIndex,
 };
 use thiserror::Error;
 use tree_sitter::{Node, TreeCursor};
-use upcast::Upcast;
 
 pub type ParseDr<T> = Dr<T, ParseError, ParseError>;
 
 #[salsa::jar(db = Db)]
 pub struct Jar(parse_module);
 
-pub trait Db: kernel::Db + Upcast<dyn kernel::Db> + salsa::DbWithJar<Jar> {}
+pub trait Db: kernel::Db + salsa::DbWithJar<Jar> {}
 
 impl<T> Db for T where T: kernel::Db + salsa::DbWithJar<Jar> + 'static {}
 
 #[tracing::instrument(level = "debug")]
 #[salsa::tracked]
 pub fn parse_module(db: &dyn Db, source: Source) -> Dr<Module, ParseError, ParseError> {
-    files::source(db.up(), source)
+    files::source(db, source)
         .map_err(|_| todo!())
         .map_errs(|_| todo!())
         .bind(|code| {
@@ -65,7 +67,7 @@ fn check_errors(
 ) {
     if cursor.node().is_error() {
         errors.push(ParseError::ParseError {
-            src: source.data(db.up()),
+            src: source.data(db),
             label_span: cursor.node().byte_range().into(),
         });
     } else if cursor.goto_first_child() {
@@ -116,14 +118,6 @@ fn process_module(
     definitions.map(|definitions| Module { path, definitions })
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Definition {
-    pub name: WithProvenance<Str>,
-    pub usage: Usage,
-    pub ty: Expression,
-    pub body: Expression,
-}
-
 fn process_definition(
     db: &dyn Db,
     source: Source,
@@ -163,11 +157,11 @@ fn process_path(
     let segments = node
         .children_by_field_name("first", &mut node.walk())
         .chain(std::iter::once(node.child_by_field_name("last").unwrap()))
-        .map(|node| Str::new(db.up(), node.utf8_text(code.as_bytes()).unwrap().to_owned()))
+        .map(|node| Str::new(db, node.utf8_text(code.as_bytes()).unwrap().to_owned()))
         .collect::<Vec<_>>();
     WithProvenance::new(
         Some(SourceSpan::new(source, node.byte_range().into())),
-        Path::new(db.up(), segments),
+        Path::new(db, segments),
     )
 }
 
@@ -180,7 +174,7 @@ fn process_identifier(
     assert_eq!(node.kind(), "identifier");
     WithProvenance::new(
         Some(SourceSpan::new(source, node.byte_range().into())),
-        Str::new(db.up(), node.utf8_text(code.as_bytes()).unwrap().to_owned()),
+        Str::new(db, node.utf8_text(code.as_bytes()).unwrap().to_owned()),
     )
 }
 
@@ -238,12 +232,12 @@ fn process_de_bruijn_index(
     node: Node,
     locals: &[Str],
 ) -> ParseDr<DeBruijnIndex> {
-    let name = Str::new(db.up(), node.utf8_text(code.as_bytes()).unwrap().to_owned());
+    let name = Str::new(db, node.utf8_text(code.as_bytes()).unwrap().to_owned());
     if let Some(index) = locals.iter().position(|value| *value == name) {
         Dr::new(DeBruijnIndex::new(index as u32))
     } else {
         Dr::new(DeBruijnIndex::zero()).with(ParseError::UnknownVariable {
-            src: source.data(db.up()),
+            src: source.data(db),
             label_span: node.byte_range().into(),
         })
     }
@@ -258,7 +252,7 @@ fn process_local(
 ) -> ParseDr<Expression> {
     assert_eq!(node.kind(), "local");
     process_de_bruijn_index(db, source, code, node, locals)
-        .map(|index| Expression::new_local(db.up(), index))
+        .map(|index| Expression::new_local(db, index))
 }
 
 fn process_app(
@@ -284,7 +278,7 @@ fn process_app(
             node.child_by_field_name("right").unwrap(),
             locals,
         )
-        .map(|right| Expression::new_apply(db.up(), left, right))
+        .map(|right| Expression::new_apply(db, left, right))
     })
 }
 
@@ -357,7 +351,7 @@ fn process_for(
     locals: &[Str],
 ) -> ParseDr<Expression> {
     assert_eq!(node.kind(), "for");
-    process_binder(db, source, code, node, locals).map(|binder| Expression::new_pi(db.up(), binder))
+    process_binder(db, source, code, node, locals).map(|binder| Expression::new_pi(db, binder))
 }
 
 fn process_fun(
@@ -368,8 +362,7 @@ fn process_fun(
     locals: &[Str],
 ) -> ParseDr<Expression> {
     assert_eq!(node.kind(), "fun");
-    process_binder(db, source, code, node, locals)
-        .map(|binder| Expression::new_lambda(db.up(), binder))
+    process_binder(db, source, code, node, locals).map(|binder| Expression::new_lambda(db, binder))
 }
 
 fn process_let(
@@ -397,14 +390,13 @@ fn process_let(
         node.child_by_field_name("body").unwrap(),
         &locals,
     );
-    to_assign.bind(|to_assign| {
-        body.map(|body| Expression::new_let(db.up(), name.contents, to_assign, body))
-    })
+    to_assign
+        .bind(|to_assign| body.map(|body| Expression::new_let(db, name.contents, to_assign, body)))
 }
 
 fn process_sort(db: &dyn Db, source: Source, code: &Arc<String>, node: Node) -> Expression {
     Expression::new_sort(
-        db.up(),
+        db,
         process_universe(source, code, node.child_by_field_name("universe").unwrap()).contents,
     )
 }
@@ -412,7 +404,7 @@ fn process_sort(db: &dyn Db, source: Source, code: &Arc<String>, node: Node) -> 
 fn process_inst(db: &dyn Db, source: Source, code: &Arc<String>, node: Node) -> Expression {
     assert_eq!(node.kind(), "inst");
     Expression::new_inst(
-        db.up(),
+        db,
         process_path(db, source, code, node.child_by_field_name("path").unwrap()).contents,
     )
 }
@@ -457,7 +449,7 @@ fn process_intro(
     parameters.bind(|parameters| {
         fields.map(|fields| {
             Expression::new_intro(
-                db.up(),
+                db,
                 path.contents,
                 parameters,
                 variant.contents,
@@ -515,7 +507,7 @@ fn process_match(
 
     subject.bind(|subject| {
         return_ty.bind(|return_ty| {
-            cases.map(|cases| Expression::new_match(db.up(), subject, return_ty, cases.into()))
+            cases.map(|cases| Expression::new_match(db, subject, return_ty, cases.into()))
         })
     })
 }
@@ -567,7 +559,7 @@ fn process_fix(
         return_ty.bind(|return_ty| {
             body.map(|body| {
                 Expression::new_fix(
-                    db.up(),
+                    db,
                     Binder {
                         structure: binder_structure,
                         body: return_ty,
@@ -594,7 +586,7 @@ fn process_ref(
         node.child_by_field_name("ty").unwrap(),
         locals,
     )
-    .map(|ty| Expression::new_ref(db.up(), ty))
+    .map(|ty| Expression::new_ref(db, ty))
 }
 
 fn process_deref(
@@ -611,7 +603,7 @@ fn process_deref(
         node.child_by_field_name("value").unwrap(),
         locals,
     )
-    .map(|ty| Expression::new_deref(db.up(), ty))
+    .map(|ty| Expression::new_deref(db, ty))
 }
 
 fn process_loan(
@@ -645,7 +637,7 @@ fn process_loan(
     );
 
     local.bind(|local| {
-        body.map(|body| Expression::new_loan(db.up(), local, loan_as.contents, with.contents, body))
+        body.map(|body| Expression::new_loan(db, local, loan_as.contents, with.contents, body))
     })
 }
 
@@ -696,9 +688,7 @@ fn process_take(
     );
 
     local.bind(|local| {
-        proofs.bind(|proofs| {
-            body.map(|body| Expression::new_take(db.up(), local, proofs.into(), body))
-        })
+        proofs.bind(|proofs| body.map(|body| Expression::new_take(db, local, proofs.into(), body)))
     })
 }
 
@@ -725,7 +715,7 @@ fn process_in(
             node.child_by_field_name("target").unwrap(),
             locals,
         )
-        .map(|target| Expression::new_in(db.up(), reference, target))
+        .map(|target| Expression::new_in(db, reference, target))
     })
 }
 
@@ -760,7 +750,7 @@ pub enum ParseError {
 impl ParseError {
     pub fn parser_bug(db: &dyn Db, source: Source, message: impl ToString) -> ParseError {
         ParseError::ParserBug {
-            src: source.data(db.up()),
+            src: source.data(db),
             message: message.to_string(),
             label_message: "error occurred here".to_owned(),
             label_span: Default::default(),

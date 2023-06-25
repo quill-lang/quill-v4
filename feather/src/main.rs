@@ -29,7 +29,7 @@ fn main() {
     let source = Source::new(&db, path, SourceType::Feather);
 
     if let Some(module) = feather_parser::parse_module(&db, source)
-        .to_reports()
+        .to_dynamic()
         .print_reports()
     {
         tracing::info!("successfully parsed module");
