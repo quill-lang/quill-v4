@@ -43,8 +43,6 @@ pub fn parse_module(db: &dyn Db, source: Source) -> Dr<Module, ParseError, Parse
                 ));
             }
 
-            tracing::trace!("{}", tree.root_node().to_sexp());
-
             let mut errors = Vec::new();
             check_errors(db, source, &mut tree.root_node().walk(), &mut errors);
             if !errors.is_empty() {
@@ -83,8 +81,8 @@ fn check_errors(
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Module {
-    path: WithProvenance<Path>,
-    definitions: Vec<WithProvenance<Definition>>,
+    pub path: WithProvenance<Path>,
+    pub definitions: Vec<WithProvenance<Definition>>,
 }
 
 /// Converts a parsed node into a [`Module`].
@@ -120,10 +118,10 @@ fn process_module(
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Definition {
-    name: WithProvenance<Str>,
-    usage: Usage,
-    ty: Expression,
-    body: Expression,
+    pub name: WithProvenance<Str>,
+    pub usage: Usage,
+    pub ty: Expression,
+    pub body: Expression,
 }
 
 fn process_definition(
@@ -667,25 +665,28 @@ fn process_take(
         node.child_by_field_name("ident").unwrap(),
         locals,
     );
-    let proofs = Dr::sequence_unfail(node.children_by_field_name("proof", &mut node.walk()).map(
-        |proof| {
-            let local = process_de_bruijn_index(
-                db,
-                source,
-                code,
-                proof.child_by_field_name("local").unwrap(),
-                locals,
-            );
-            let proof_term = process_expr(
-                db,
-                source,
-                code,
-                proof.child_by_field_name("proof").unwrap(),
-                locals,
-            );
-            local.bind(|local| proof_term.map(|proof_term| (local, proof_term)))
-        },
-    ));
+    let proofs = node.child_by_field_name("proofs").unwrap();
+    let proofs = Dr::sequence_unfail(
+        proofs
+            .children_by_field_name("proof", &mut proofs.walk())
+            .map(|proof| {
+                let local = process_de_bruijn_index(
+                    db,
+                    source,
+                    code,
+                    proof.child_by_field_name("local").unwrap(),
+                    locals,
+                );
+                let proof_term = process_expr(
+                    db,
+                    source,
+                    code,
+                    proof.child_by_field_name("proof").unwrap(),
+                    locals,
+                );
+                local.bind(|local| proof_term.map(|proof_term| (local, proof_term)))
+            }),
+    );
     let body = process_expr(
         db,
         source,

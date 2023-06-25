@@ -11,4 +11,8 @@ impl<K, V> VecMap<K, V> {
     pub fn new() -> Self {
         Self(Vec::new())
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = &(K, V)> {
+        self.0.iter()
+    }
 }

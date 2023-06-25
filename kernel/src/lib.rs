@@ -9,9 +9,9 @@ use upcast::{Upcast, UpcastFrom};
 #[salsa::jar(db = Db)]
 pub struct Jar(expr::Expression);
 
-pub trait Db: files::Db + Upcast<dyn files::Db> + salsa::DbWithJar<Jar> {}
-
-impl<T> Db for T where T: files::Db + salsa::DbWithJar<Jar> + 'static {}
+pub trait Db: files::Db + Upcast<dyn files::Db> + salsa::DbWithJar<Jar> {
+    fn format_expression(&self, expr: expr::Expression) -> String;
+}
 
 impl<'a, T: Db + 'a> UpcastFrom<T> for dyn Db + 'a {
     fn up_from(value: &T) -> &(dyn Db + 'a) {

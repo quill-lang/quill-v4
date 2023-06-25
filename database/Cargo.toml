@@ -8,6 +8,8 @@ edition = "2021"
 [dependencies]
 feather-parser = { version = "0.0.0", path = "../feather_parser" }
 files = { version = "0.0.0", path = "../files" }
+formatter = { version = "0.0.0", path = "../formatter" }
 kernel = { version = "0.0.0", path = "../kernel" }
 notify-debouncer-mini = "0.3.0"
 salsa = { git = "https://github.com/salsa-rs/salsa", package = "salsa-2022" }
+tracing = "0.1.37"

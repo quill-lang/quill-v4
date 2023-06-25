@@ -19,6 +19,14 @@
   .
 )
 
+(take_proofs
+  .
+  "{" @append_spaced_softline
+  _
+  "}" @prepend_spaced_softline
+  .
+)
+
 (match_variant
   "," @append_input_softline
   .

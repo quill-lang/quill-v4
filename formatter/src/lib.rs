@@ -168,6 +168,34 @@ pub fn formatter(
     Ok(())
 }
 
+pub fn format_feather(input: &str) -> Option<String> {
+    let mut output = Vec::new();
+    let query = include_str!("feather.scm");
+
+    let config = Configuration::parse_default_config();
+    let language = config.get_language("feather").unwrap();
+    let grammars = language.grammars().expect("grammars");
+
+    // TODO: Cache `query`.
+    // TODO: Return more useful errors.
+    match formatter(
+        &mut input.as_bytes(),
+        &mut output,
+        query,
+        language,
+        &grammars,
+        Operation::Format {
+            skip_idempotence: true,
+        },
+    ) {
+        Ok(()) => {
+            let formatted = String::from_utf8(output).expect("valid utf-8");
+            Some(formatted)
+        }
+        Err(_err) => None,
+    }
+}
+
 fn read_input(input: &mut dyn io::Read) -> Result<String, io::Error> {
     let mut content = String::new();
     input.read_to_string(&mut content)?;

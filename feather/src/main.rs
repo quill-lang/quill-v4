@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use database::FeatherDatabase;
 use files::{Path, Source, SourceType, Str};
+use kernel::Db;
 
 fn main() {
     let log_level = tracing::Level::TRACE;
@@ -10,6 +11,7 @@ fn main() {
         .with_max_level(log_level)
         .with_span_events(tracing_subscriber::fmt::format::FmtSpan::CLOSE)
         .with_timer(tracing_subscriber::fmt::time::uptime())
+        .with_env_filter("database=trace,diagnostic=trace,feather=trace,feather_parser=trace,files=trace,kernel=trace")
         .pretty()
         .finish();
     tracing::subscriber::set_global_default(subscriber)
@@ -26,11 +28,19 @@ fn main() {
     );
     let source = Source::new(&db, path, SourceType::Feather);
 
-    if let Some(_result) = feather_parser::parse_module(&db, source)
+    if let Some(module) = feather_parser::parse_module(&db, source)
         .to_reports()
         .print_reports()
     {
         tracing::info!("successfully parsed module");
+        for definition in &module.definitions {
+            tracing::info!(
+                "def {}: {} =\n    {}",
+                definition.contents.name.contents.text(&db),
+                db.format_expression(definition.contents.ty),
+                db.format_expression(definition.contents.body),
+            );
+        }
         // tracing::info!("{:#?}", result);
     }
 

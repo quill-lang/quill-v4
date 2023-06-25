@@ -194,11 +194,15 @@ module.exports = grammar({
       take: $ => seq(
         'take',
         field('ident', $.identifier),
+        field('proofs', $.take_proofs),
+        ';',
+        field('body', $._expr),
+      ),
+
+      take_proofs: $ => seq(
         '{',
         field('proof', repeat($.take_proof)),
         '}',
-        ';',
-        field('body', $._expr),
       ),
 
       take_proof: $ => seq(
