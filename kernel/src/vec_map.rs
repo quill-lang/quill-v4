@@ -15,6 +15,10 @@ impl<K, V> VecMap<K, V> {
     pub fn iter(&self) -> impl Iterator<Item = &(K, V)> {
         self.0.iter()
     }
+
+    pub fn into_inner(self) -> Vec<(K, V)> {
+        self.0
+    }
 }
 
 impl<K, V> Default for VecMap<K, V> {
